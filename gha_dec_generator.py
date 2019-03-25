@@ -45,21 +45,22 @@ class Solar_System:
             for hour in range(24):
                 t = ts.utc(self.start_date.year, self.start_date.month, day + self.start_date.day, hour)
                 t2 = ts.utc(self.start_date.year, self.start_date.month, day + self.start_date.day, hour -1)
-                ra, dec, distance  = planets[self.ref_body_name].at(t).observe(planets[self.obs_body_name]).apparent().radec(epoch='date')
-                ra2, dec2, distance2  = planets[self.ref_body_name].at(t2).observe(planets[self.obs_body_name]).apparent().radec(epoch='date')
+                ra, dec, distance = planets[self.ref_body_name].at(t).observe(planets[self.obs_body_name]).apparent().radec(epoch='date')
+                ra2, dec2, distance2 = planets[self.ref_body_name].at(t2).observe(planets[self.obs_body_name]).apparent().radec(epoch='date')
                 gha = 15*(t.gast - ra.hours)
                 gha2 = 15*(t2.gast - ra2.hours)
                 hp = Angle(degrees= degrees(atan(radii[self.ref_body_name]/distance.km)))
 
                 if gha < 0:
-                    print(f'{t.utc_datetime()}, GHA = {Angle(degrees= gha + 360)}, Dec = {dec}, HP = {hp}, v = {Angle(degrees= abs(14.313333 - abs(gha - gha2)))}')
+                    print(f'{distance}, {self.obs_body_name}, {t.utc_datetime()}, GHA = {Angle(degrees= gha + 360)}, Dec = {dec}, HP = {hp}, v = {Angle(degrees= abs(14.313333 - abs(gha - gha2)))}')
                 else:
-                    print(f'{t.utc_datetime()}, GHA = {Angle(degrees= gha)}, Dec = {dec}, HP = {hp}, v = {Angle(degrees= abs(14.313333 - abs(gha - gha2)))}')
+                    print(f'{distance2}, {self.obs_body_name}, {t.utc_datetime()}, GHA = {Angle(degrees= gha)}, Dec = {dec}, HP = {hp}, v = {Angle(degrees= abs(14.313333 - abs(gha - gha2)))}')
                 if hour == 0 and day > 0:
                     # 'p' denotes previous, tp is 1 hour behind t.
                     tp = ts.utc(self.start_date.year, self.start_date.month, day + self.start_date.day - 1, hour - 1)
                     rap, decp, distancep = planets[self.ref_body_name].at(tp).observe(planets[self.obs_body_name]).apparent().radec(epoch='date')
                     sd = Angle(degrees=degrees(atan(radii[self.obs_body_name] / distancep.km)))
+
                     print(f'SD: {sd}')
                     print('\n')
 
@@ -69,6 +70,6 @@ class Solar_System:
     def sd_generator(self):
         pass
 
-f37 = Solar_System('moon', 'earth', datetime.date(2017,1,1), 4)
+f37 = Solar_System('mars', 'earth', datetime.date(2017,1,1), 4)
 f37.gha_dec_hp()
 
