@@ -78,22 +78,19 @@ class DMSAngle:
         self.seconds = int(((angle - int(angle))*60 - self.minutes)*60)
 
     def __str__(self):
-        return f'{self.degrees}°{self.deci_minutes}\'' if self.deci_minutes >= 10 else f'{self.degrees}°0{self.deci_minutes}\''
+        return f'{self.degrees}°{self.deci_minutes}\'' if self.deci_minutes >= 10 else f'{self.degrees}°{self.deci_minutes}\''
 
 
 def convert_to_date_time(date_string):
     try:
-        date = datetime.strptime(date_string, '%m%d%Y %H')
+        date = datetime.strptime(date_string, '%m-%d-%Y-%H')
         return date
     except ValueError:
         return None
 
 
 if __name__ == '__main__':
-    # time_range = get_time_range()
     alm_instance = Almanac(observer_location=sys.argv[4], reference_bodies=sys.argv[5:], start_time=convert_to_date_time(sys.argv[1]), end_time=convert_to_date_time(sys.argv[2]), obs_interval=sys.argv[3])
     alm_instance.generate_bodies()
-    # print(alm_instance.reference_bodies)
     alm_instance.generate_radecs()
-    # print(alm_instance.day_dict.values())
     print(alm_instance.build_tables())
