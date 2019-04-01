@@ -1,106 +1,99 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import sys
 from skyfield.api import load
 
+class Almanac:
 
-
-def convert_to_date_time(date_string):
-    try:
-        date = datetime.strptime(date_string, '%m/%d/%Y %H')
-        return date
-    except ValueError:
-        return None
-
-class TabulatedValue:
-
-    def __init__(self, date_time, body):
-        self.date_time = date_time
-        self.body = body
-        self.gha = None
-        self.dec = None
-        self.sha = None
-        self.l_v = None
-        self.l_d = None
-        self.l_m = None
-        self.h_p = None
-        self.s_d = None
-
-
-class B2BPrediction:
-
-    def __init__(self, name, observation_point):
-        self.name = name
-        if not observation_point:
-            self.observer_location = 'earth'
+    def __init__(self, observer_location, reference_bodies, start_time, end_time, obs_interval, data_set=None):
+        self.observer_location = observer_location
+        self.reference_bodies = reference_bodies
+        self.start_time = start_time
+        self.end_time = end_time
+        #obs_interval is the interval between observations as expressed in fractions of a day
+        self.obs_interval = timedelta(days=1/int(obs_interval))
+        if not data_set:
+            self.data_set = load('de422.bsp')
         else:
-            self.observer_location = observation_point
+            self.data_set = load(data_set)
+        self.day_dict = {}
+        self.timescale = load.timescale()
 
-    def compute_angles_and_corrections(self, time):
-        return {}
+    def generate_bodies(self):
+        self.reference_bodies = list(map(lambda ref_body: Body(name=ref_body, data_set=self.data_set), self.reference_bodies))
+        self.observer_location = Body(name=self.observer_location, data_set=self.data_set)
+        for body in self.reference_bodies:
+            body.generate_body()
+        self.observer_location.generate_body()
 
-    def compute_angle(self, time, angle_type):
-        pass
+    def generate_radecs(self):
+        observation_time = self.start_time
+        while observation_time <= self.end_time:
+            observation_dict = {}
+            for body in self.reference_bodies:
+                observation_dict[body.name] = body.generate_radec(observing_body=self.observer_location, time=observation_time, timescale=self.timescale)
+            self.day_dict[observation_time] = observation_dict
+            observation_time += self.obs_interval
 
-    def compute_dec(self, time):
-        pass
+    def build_tables(self):
+        tables = f"Almanac viewed from {self.observer_location.name} between {self.start_time} and {self.end_time} measured every {self.obs_interval} hours"
+        tables += "\n\t\t\t" + "\t\t\t".join([x.name.upper() for x in self.reference_bodies])
+        tables += "\nTime\t\t\t{}".format("GHA\t\tDec\t" * len(self.reference_bodies))
+        for obs_time in self.day_dict.keys():
+            tables += f"\n{obs_time}\t"
+            for angles in list(self.day_dict[obs_time].values()):
+                tables += "{}\t{}\t".format(str(angles[0]), str(angles[1]))
+        return tables
 
-    def compute_sr(self):
-        pass
 
-    def compute_bs(self):
-        pass
+class Body:
 
-#Distance from observer is less than 0.1 AU
-class SatelliteBody(B2BPrediction):
-    pass
+    def __init__(self, name, data_set):
+        self.name = name
+        self.data_set = data_set
+        self.obs_distance = None
+        self.de_entry = None
 
-#Distance from observer is between 0.1 AU and 50 AU
-class NearBody(B2BPrediction):
-    pass
+    def generate_body(self):
+        try:
+            self.de_entry = self.data_set[self.name]
+        except ValueError:
+            return f'{self.name} not found in body data-base'
 
-#Distance from observer is greater than 50 AU
-class FarBody(B2BPrediction):
-    pass
-
+    def generate_radec(self, observing_body, time, timescale):
+        time = timescale.utc(day=time.day, year=time.year, month=time.month, hour=time.hour)
+        ra, dec, dist = observing_body.de_entry.at(time).observe(self.de_entry).radec(time)
+        gha = 15*(time.gast - ra.hours)
+        if gha < 0:
+            return (DMSAngle(gha + 360), DMSAngle(dec.degrees))
+        else:
+            return (DMSAngle(gha), DMSAngle(dec.degrees))
 
 class DMSAngle:
 
     def __init__(self, angle):
         self.angle = angle
         self.degrees = int(angle)
-        self.minutes = int((angle - int(angle))*60)
+        self.minutes = (angle - int(angle))*60
         self.deci_minutes = round((angle - int(angle))*60, 1)
-        self.seconds = int(((angle - int(angle))*60 - int(self.minutes))*60)
+        self.seconds = int(((angle - int(angle))*60 - self.minutes)*60)
 
     def __str__(self):
         return f'{self.degrees}°{self.deci_minutes}\'' if self.deci_minutes >= 10 else f'{self.degrees}°0{self.deci_minutes}\''
 
-def construct_bodies(body_list, observing_body, reference_body, observing_time):
-    """
-    Receives a list of strings representing different bodies, returns a list of Body objects.
-    This method attempts to take a list of ideas
-    :param body_list:  List of strings referring to various celestial bodies.
-    :return List: List of NearBody or FarBody objects.
-    """
-    bodies = load('de422.bsp')
-    for body_candidate in body_list:
-        prediction_time = load.timescale().utc(observing_time.year, observing_time.month, observing_time.day - 1, observing_time.hour -1, observing_time.minute - 1)
-        spherical_coords = bodies[reference_body].observe(body_list[observing_body]).at(prediction_time).apparent().raded(epoch='date')
-        if spherical_coords[2] < 0.1:
-            body_list.append(SatelliteBody())
-        elif spherical_coords[2] < 50:
-            pass
-        else:
-            pass
 
+def convert_to_date_time(date_string):
+    try:
+        date = datetime.strptime(date_string, '%m%d%Y %H')
+        return date
+    except ValueError:
+        return None
 
-
-    return []
 
 if __name__ == '__main__':
-    if sys.argv[1]:
-        print(convert_to_date_time(sys.argv[1]))
-
-
-    #Find distance to each body from observer location
-    #Generate a list of Near or Far Body objects by examining the distances found in the step above.
+    # time_range = get_time_range()
+    alm_instance = Almanac(observer_location=sys.argv[4], reference_bodies=sys.argv[5:], start_time=convert_to_date_time(sys.argv[1]), end_time=convert_to_date_time(sys.argv[2]), obs_interval=sys.argv[3])
+    alm_instance.generate_bodies()
+    # print(alm_instance.reference_bodies)
+    alm_instance.generate_radecs()
+    # print(alm_instance.day_dict.values())
+    print(alm_instance.build_tables())
