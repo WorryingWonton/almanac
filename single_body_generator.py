@@ -36,8 +36,8 @@ class Almanac:
 
     def build_tables(self):
         tables = f"Almanac viewed from {self.observer_location.name} between {self.start_time} and {self.end_time} measured every {self.obs_interval} hours"
-        tables += "\n\t\t\t" + "\t\t\t".join([x.name.upper() for x in self.reference_bodies])
-        tables += "\nTime\t\t\t{}".format("GHA\t\tDec\t" * len(self.reference_bodies))
+        tables += "\n\t\t\t" + "\t\t\t\t".join([x.name.upper() for x in self.reference_bodies])
+        tables += "\nTime\t\t\t{}".format("GHA\t\tDec\t\t" * len(self.reference_bodies))
         for obs_time in self.day_dict.keys():
             tables += f"\n{obs_time}\t"
             for angles in list(self.day_dict[obs_time].values()):
