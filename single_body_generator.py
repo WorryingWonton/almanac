@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import sys
 from skyfield.api import load
 
+
 class Almanac:
 
     def __init__(self, observer_location, reference_bodies, start_time, end_time, obs_interval, data_set=None):
@@ -17,6 +18,12 @@ class Almanac:
             self.data_set = load(data_set)
         self.day_dict = {}
         self.timescale = load.timescale()
+
+    def build_almanac(self):
+        self.generate_bodies()
+
+    def build_page(self):
+        pass
 
     def generate_bodies(self):
         self.reference_bodies = list(map(lambda ref_body: Body(name=ref_body, data_set=self.data_set), self.reference_bodies))
@@ -68,6 +75,35 @@ class Body:
         else:
             return (DMSAngle(gha), DMSAngle(dec.degrees))
 
+class ReferenceBody(Body):
+
+    def generate_radec(self, observing_body, time, timescale):
+        #Only returns GHA
+        pass
+
+class SatelliteBody(Body):
+
+    def generate_radec(self, observing_body, time, timescale):
+        #Generates all corrections values
+        pass
+
+class NearBody(Body):
+
+    def generate_radec(self, observing_body, time, timescale):
+        #Generates some corrections, namely d and v
+        pass
+
+class Farbody(Body):
+
+    def generate_radec(self, observing_body, time, timescale):
+        #Generates no corrections
+        pass
+
+class Star(Farbody):
+    def generate_radec(self, observing_body, time, timescale):
+        #Returns SHA
+        pass
+
 class DMSAngle:
 
     def __init__(self, angle):
@@ -78,7 +114,7 @@ class DMSAngle:
         self.seconds = int(((angle - int(angle))*60 - self.minutes)*60)
 
     def __str__(self):
-        return f'{self.degrees}°{self.deci_minutes}\'' if self.deci_minutes >= 10 else f'{self.degrees}°{self.deci_minutes}\''
+        return f'{self.degrees}°{self.deci_minutes}\''
 
 
 def convert_to_date_time(date_string):
